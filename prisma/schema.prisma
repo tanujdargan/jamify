@@ -1,0 +1,40 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Room {
+  id          String      @id @default(cuid())
+  name        String
+  hostId      String
+  spotifyAccessToken  String?
+  spotifyRefreshToken String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  queueItems  QueueItem[]
+  isActive    Boolean     @default(true)
+}
+
+model QueueItem {
+  id          String   @id @default(cuid())
+  roomId      String
+  spotifyTrackId String
+  trackName   String
+  artistName  String
+  albumArt    String?
+  duration    Int
+  addedBy     String?
+  addedAt     DateTime @default(now())
+  playedAt    DateTime?
+  isPlayed    Boolean  @default(false)
+  room        Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@index([roomId])
+}
