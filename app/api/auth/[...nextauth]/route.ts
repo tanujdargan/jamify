@@ -12,7 +12,7 @@ const scopes = [
   "playlist-modify-private"
 ].join(" ")
 
-const authOptions: NextAuthOptions = {
+export const authOptions: NextAuthOptions = {
   providers: [
     SpotifyProvider({
       clientId: process.env.SPOTIFY_CLIENT_ID!,
