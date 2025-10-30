@@ -20,14 +20,23 @@ export async function GET(req: NextRequest) {
     )
 
     if (!response.ok) {
-      throw new Error('Spotify API request failed')
+      const errorData = await response.json().catch(() => ({}))
+      console.error('Spotify API error:', response.status, errorData)
+      return NextResponse.json({ 
+        error: 'Spotify API request failed',
+        details: errorData,
+        status: response.status 
+      }, { status: response.status })
     }
 
     const data = await response.json()
     return NextResponse.json(data)
   } catch (error) {
     console.error('Error searching Spotify:', error)
-    return NextResponse.json({ error: 'Failed to search' }, { status: 500 })
+    return NextResponse.json({ 
+      error: 'Failed to search',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
   }
 }
 
