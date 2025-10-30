@@ -10,6 +10,7 @@ interface Room {
   id: string
   name: string
   hostId: string
+  allowedUsers?: string
   createdAt: string
 }
 
@@ -81,7 +82,14 @@ export default function JoinRoomPage() {
           </div>
 
           <div className="border-t border-gray-200 pt-8">
-            <Queue roomId={roomId} isHost={false} refreshTrigger={queueRefresh} />
+            <Queue 
+              roomId={roomId} 
+              isHost={false} 
+              refreshTrigger={queueRefresh}
+              hostId={room.hostId}
+              allowedUsers={room.allowedUsers}
+              currentUserName={session?.user?.name || ''}
+            />
           </div>
         </div>
 
