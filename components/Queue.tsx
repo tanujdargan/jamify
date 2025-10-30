@@ -13,6 +13,7 @@ interface QueueItemType {
   addedBy?: string
   addedAt: string
   isPlayed: boolean
+  addedToSpotify: boolean
 }
 
 interface QueueProps {
@@ -46,7 +47,7 @@ export default function Queue({ roomId, isHost = false, refreshTrigger }: QueueP
     return () => clearInterval(interval)
   }, [roomId, refreshTrigger])
 
-  const addToSpotifyQueue = async (trackId: string) => {
+  const addToSpotifyQueue = async (itemId: string, trackId: string) => {
     if (!session?.accessToken) return
     
     setProcessing(trackId)
@@ -61,7 +62,12 @@ export default function Queue({ roomId, isHost = false, refreshTrigger }: QueueP
       })
       
       if (response.ok) {
+        // Mark as added to Spotify
+        await fetch(`/api/rooms/${roomId}/queue/${itemId}/spotify-sync`, {
+          method: 'PATCH',
+        })
         alert('Song added to your Spotify queue!')
+        fetchQueue() // Refresh to show updated status
       } else {
         const data = await response.json()
         alert(`Failed to add to Spotify queue: ${data.error}`)
@@ -74,8 +80,12 @@ export default function Queue({ roomId, isHost = false, refreshTrigger }: QueueP
     }
   }
 
-  const deleteItem = async (itemId: string) => {
-    if (!confirm('Remove this song from the queue?')) return
+  const deleteItem = async (itemId: string, addedToSpotify: boolean) => {
+    const message = addedToSpotify 
+      ? 'This song is already in your Spotify queue and cannot be removed from Spotify via API. Remove from Jamify queue anyway?' 
+      : 'Remove this song from the queue?'
+    
+    if (!confirm(message)) return
     
     setDeleting(itemId)
     try {
@@ -118,10 +128,16 @@ export default function Queue({ roomId, isHost = false, refreshTrigger }: QueueP
   const addAllToSpotify = async () => {
     if (!session?.accessToken || queue.length === 0) return
     
-    if (!confirm(`Add all ${queue.length} songs to your Spotify queue?`)) return
+    const unsyncedSongs = queue.filter(item => !item.addedToSpotify)
+    if (unsyncedSongs.length === 0) {
+      alert('All songs are already in your Spotify queue!')
+      return
+    }
+    
+    if (!confirm(`Add ${unsyncedSongs.length} songs to your Spotify queue?`)) return
     
     let successCount = 0
-    for (const item of queue) {
+    for (const item of unsyncedSongs) {
       try {
         const response = await fetch('/api/spotify/queue', {
           method: 'POST',
@@ -131,7 +147,13 @@ export default function Queue({ roomId, isHost = false, refreshTrigger }: QueueP
             accessToken: session.accessToken,
           }),
         })
-        if (response.ok) successCount++
+        if (response.ok) {
+          // Mark as added to Spotify
+          await fetch(`/api/rooms/${roomId}/queue/${item.id}/spotify-sync`, {
+            method: 'PATCH',
+          })
+          successCount++
+        }
         // Small delay between requests to avoid rate limiting
         await new Promise(resolve => setTimeout(resolve, 200))
       } catch (error) {
@@ -139,7 +161,8 @@ export default function Queue({ roomId, isHost = false, refreshTrigger }: QueueP
       }
     }
     
-    alert(`Added ${successCount} of ${queue.length} songs to Spotify!`)
+    alert(`Added ${successCount} of ${unsyncedSongs.length} songs to Spotify!`)
+    fetchQueue() // Refresh to show updated statuses
   }
 
   return (
@@ -169,7 +192,14 @@ export default function Queue({ roomId, isHost = false, refreshTrigger }: QueueP
             />
           )}
           <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-gray-900 truncate">{item.trackName}</h3>
+            <div className="flex items-center gap-2">
+              <h3 className="font-semibold text-gray-900 truncate">{item.trackName}</h3>
+              {item.addedToSpotify && (
+                <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-semibold rounded whitespace-nowrap">
+                  In Spotify
+                </span>
+              )}
+            </div>
             <p className="text-sm text-gray-600 truncate">{item.artistName}</p>
             <p className="text-xs text-gray-500">
               Added by {item.addedBy || 'Guest'} • {formatDuration(item.duration)}
@@ -178,15 +208,15 @@ export default function Queue({ roomId, isHost = false, refreshTrigger }: QueueP
           <div className="flex gap-2">
             {isHost && (
               <button
-                onClick={() => addToSpotifyQueue(item.spotifyTrackId)}
-                disabled={processing === item.spotifyTrackId}
+                onClick={() => addToSpotifyQueue(item.id, item.spotifyTrackId)}
+                disabled={processing === item.spotifyTrackId || item.addedToSpotify}
                 className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed font-medium whitespace-nowrap"
               >
-                {processing === item.spotifyTrackId ? 'Adding...' : 'Add to Spotify'}
+                {item.addedToSpotify ? 'Added ✓' : processing === item.spotifyTrackId ? 'Adding...' : 'Add to Spotify'}
               </button>
             )}
             <button
-              onClick={() => deleteItem(item.id)}
+              onClick={() => deleteItem(item.id, item.addedToSpotify)}
               disabled={deleting === item.id}
               className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
             >
