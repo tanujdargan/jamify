@@ -1,10 +1,12 @@
 // @ts-check
 
 (async function() {
-  if (!Spicetify.Player || !Spicetify.Platform || !Spicetify.URI) {
-    setTimeout(arguments.callee, 1000);
-    return;
+  // Wait for Spicetify to be ready
+  while (!Spicetify?.showNotification) {
+    await new Promise(resolve => setTimeout(resolve, 100));
   }
+
+  console.log('[Jamify] Starting initialization...');
 
   const CONFIG = {
     API_URL: 'https://jamify-mu.vercel.app',
@@ -18,111 +20,166 @@
       this.isPolling = false;
       this.lastQueueState = [];
       this.initialized = false;
+      this.buttonElement = null;
     }
 
     async init() {
-      console.log('[Jamify] Initializing companion app...');
-      
-      // Add button to Spotify UI
-      this.addUIButton();
-      
-      // Start polling if room ID exists
-      if (this.roomId) {
-        this.startPolling();
-      }
+      try {
+        console.log('[Jamify] Initializing companion app...');
+        
+        // Add button to Spotify UI
+        await this.addUIButton();
+        
+        // Start polling if room ID exists
+        if (this.roomId) {
+          this.startPolling();
+          Spicetify.showNotification('Jamify connected to room');
+        }
 
-      this.initialized = true;
-      console.log('[Jamify] Companion app initialized');
+        this.initialized = true;
+        console.log('[Jamify] Companion app initialized successfully');
+      } catch (error) {
+        console.error('[Jamify] Initialization error:', error);
+        Spicetify.showNotification('Jamify failed to initialize', true);
+      }
     }
 
-    addUIButton() {
-      // Add a button to the top bar
-      const button = new Spicetify.Topbar.Button(
-        'Jamify',
-        'playlist',
-        () => this.openSettings(),
-        false
-      );
-
-      // Add indicator if connected
-      if (this.roomId) {
-        button.element.style.color = '#22c55e'; // Green when connected
+    async addUIButton() {
+      try {
+        // Create button element
+        const button = document.createElement('button');
+        button.classList.add('main-topBar-button');
+        button.setAttribute('data-tooltip', 'Jamify Companion');
+        button.style.position = 'relative';
+        button.innerHTML = `
+          <svg role="img" height="16" width="16" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13zM0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8z"/>
+            <path d="M8 3.5a.5.5 0 0 1 .5.5v4a.5.5 0 0 1-1 0V4a.5.5 0 0 1 .5-.5zM8 11a1 1 0 1 0 0-2 1 1 0 0 0 0 2z"/>
+          </svg>
+          <span style="margin-left: 4px;">Jamify</span>
+        `;
+        
+        // Add click handler
+        button.onclick = () => this.openSettings();
+        
+        // Update color if connected
+        if (this.roomId) {
+          button.style.color = '#22c55e';
+        }
+        
+        // Add to topbar
+        const topbar = document.querySelector('.main-topBar-topbarContent');
+        if (topbar) {
+          topbar.appendChild(button);
+          this.buttonElement = button;
+          console.log('[Jamify] Button added to topbar');
+        } else {
+          console.error('[Jamify] Topbar not found');
+        }
+      } catch (error) {
+        console.error('[Jamify] Error adding button:', error);
       }
     }
 
     openSettings() {
-      const currentRoom = this.roomId || 'Not connected';
-      
-      Spicetify.PopupModal.display({
-        title: 'Jamify Companion',
-        content: `
-          <div style="padding: 20px; min-width: 400px;">
-            <p style="margin-bottom: 16px;">Connect your Spotify to a Jamify room for full queue sync.</p>
+      try {
+        const currentRoom = this.roomId || 'Not connected';
+        
+        const modal = document.createElement('div');
+        modal.id = 'jamify-modal';
+        modal.style.cssText = `
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background: rgba(0, 0, 0, 0.8);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 9999;
+        `;
+        
+        modal.innerHTML = `
+          <div style="background: #282828; border-radius: 8px; padding: 24px; min-width: 400px; max-width: 500px; color: white;">
+            <h2 style="margin: 0 0 16px 0; font-size: 24px; font-weight: bold;">Jamify Companion</h2>
+            
+            <p style="margin-bottom: 16px; color: #b3b3b3;">Connect your Spotify to a Jamify room for full queue sync.</p>
             
             <div style="margin-bottom: 16px;">
-              <label style="display: block; margin-bottom: 8px; font-weight: bold;">
-                Current Room:
-              </label>
-              <div style="padding: 8px; background: #282828; border-radius: 4px;">
-                ${currentRoom}
-              </div>
+              <label style="display: block; margin-bottom: 8px; font-weight: bold;">Current Room:</label>
+              <div style="padding: 8px; background: #181818; border-radius: 4px;">${currentRoom}</div>
             </div>
 
             <div style="margin-bottom: 16px;">
-              <label style="display: block; margin-bottom: 8px; font-weight: bold;">
-                Room ID:
-              </label>
+              <label style="display: block; margin-bottom: 8px; font-weight: bold;">Room ID:</label>
               <input 
                 id="jamify-room-input" 
                 type="text" 
                 placeholder="Enter room ID from Jamify web app"
                 value="${this.roomId || ''}"
-                style="width: 100%; padding: 8px; background: #282828; border: 1px solid #404040; border-radius: 4px; color: white;"
+                style="width: 100%; padding: 8px; background: #181818; border: 1px solid #404040; border-radius: 4px; color: white; font-size: 14px; box-sizing: border-box;"
               />
             </div>
 
-            <div style="display: flex; gap: 8px;">
-              <button id="jamify-connect-btn" style="flex: 1; padding: 12px; background: #1db954; border: none; border-radius: 4px; color: white; font-weight: bold; cursor: pointer;">
+            <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+              <button id="jamify-connect-btn" style="flex: 1; padding: 12px; background: #1db954; border: none; border-radius: 4px; color: white; font-weight: bold; cursor: pointer; font-size: 14px;">
                 Connect
               </button>
-              <button id="jamify-disconnect-btn" style="flex: 1; padding: 12px; background: #e53e3e; border: none; border-radius: 4px; color: white; font-weight: bold; cursor: pointer;">
+              <button id="jamify-disconnect-btn" style="flex: 1; padding: 12px; background: #e22134; border: none; border-radius: 4px; color: white; font-weight: bold; cursor: pointer; font-size: 14px;">
                 Disconnect
               </button>
             </div>
 
-            <div style="margin-top: 16px; padding: 12px; background: #1a1a1a; border-radius: 4px; font-size: 12px;">
-              <p style="margin-bottom: 8px;"><strong>How it works:</strong></p>
-              <ol style="margin-left: 20px; line-height: 1.6;">
+            <div style="padding: 12px; background: #181818; border-radius: 4px; font-size: 12px; margin-bottom: 16px;">
+              <p style="margin: 0 0 8px 0; font-weight: bold;">How it works:</p>
+              <ol style="margin: 0 0 0 20px; padding: 0; line-height: 1.6; color: #b3b3b3;">
                 <li>Create or join a room on jamify-mu.vercel.app</li>
                 <li>Copy the room ID from the URL</li>
                 <li>Paste it here and click Connect</li>
                 <li>Your Spotify queue will sync with Jamify in real-time</li>
               </ol>
             </div>
-          </div>
-        `,
-        isLarge: true
-      });
 
-      // Add event listeners
-      setTimeout(() => {
-        document.getElementById('jamify-connect-btn')?.addEventListener('click', () => {
+            <button id="jamify-close-btn" style="width: 100%; padding: 10px; background: #535353; border: none; border-radius: 4px; color: white; cursor: pointer; font-size: 14px;">
+              Close
+            </button>
+          </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Event listeners
+        document.getElementById('jamify-connect-btn').onclick = () => {
           const input = document.getElementById('jamify-room-input');
           const roomId = input.value.trim();
           
           if (roomId) {
             this.connectToRoom(roomId);
-            Spicetify.PopupModal.hide();
+            document.getElementById('jamify-modal').remove();
           } else {
-            Spicetify.showNotification('Please enter a room ID');
+            Spicetify.showNotification('Please enter a room ID', true);
           }
-        });
+        };
 
-        document.getElementById('jamify-disconnect-btn')?.addEventListener('click', () => {
+        document.getElementById('jamify-disconnect-btn').onclick = () => {
           this.disconnectFromRoom();
-          Spicetify.PopupModal.hide();
-        });
-      }, 100);
+          document.getElementById('jamify-modal').remove();
+        };
+
+        document.getElementById('jamify-close-btn').onclick = () => {
+          document.getElementById('jamify-modal').remove();
+        };
+
+        modal.onclick = (e) => {
+          if (e.target === modal) {
+            modal.remove();
+          }
+        };
+      } catch (error) {
+        console.error('[Jamify] Error opening settings:', error);
+        Spicetify.showNotification('Failed to open settings', true);
+      }
     }
 
     connectToRoom(roomId) {
@@ -134,8 +191,9 @@
       this.startPolling();
       
       // Update button color
-      const button = document.querySelector('[aria-label="Jamify"]');
-      if (button) button.style.color = '#22c55e';
+      if (this.buttonElement) {
+        this.buttonElement.style.color = '#22c55e';
+      }
     }
 
     disconnectFromRoom() {
@@ -146,8 +204,9 @@
       console.log('[Jamify] Disconnected from room');
       
       // Reset button color
-      const button = document.querySelector('[aria-label="Jamify"]');
-      if (button) button.style.color = '';
+      if (this.buttonElement) {
+        this.buttonElement.style.color = '';
+      }
     }
 
     startPolling() {
@@ -226,8 +285,16 @@
 
     async getCurrentQueue() {
       try {
-        const queue = Spicetify.Platform.PlayerAPI._queue;
-        return queue?.nextTracks || [];
+        // Try to get queue from Player API
+        if (Spicetify.Player?.getQueue) {
+          const queue = await Spicetify.Player.getQueue();
+          return queue?.nextUp || [];
+        }
+        // Fallback to Platform API
+        if (Spicetify.Platform?.PlayerAPI?._queue) {
+          return Spicetify.Platform.PlayerAPI._queue.nextTracks || [];
+        }
+        return [];
       } catch (error) {
         console.error('[Jamify] Error getting current queue:', error);
         return [];
@@ -236,15 +303,18 @@
 
     async clearQueue(currentQueue) {
       try {
-        // Remove tracks from queue
-        for (const track of currentQueue) {
-          try {
-            await Spicetify.Platform.PlayerAPI.removeFromQueue([{
-              uri: track.uri
-            }]);
-          } catch (error) {
-            console.error('[Jamify] Error removing track:', error);
+        // Use Player API to clear queue
+        if (Spicetify.Player?.removeFromQueue) {
+          for (const track of currentQueue) {
+            try {
+              await Spicetify.Player.removeFromQueue(track.uri);
+              await new Promise(resolve => setTimeout(resolve, 50)); // Small delay
+            } catch (error) {
+              console.error('[Jamify] Error removing track:', error);
+            }
           }
+        } else {
+          console.warn('[Jamify] Queue removal not supported');
         }
       } catch (error) {
         console.error('[Jamify] Error clearing queue:', error);
@@ -254,43 +324,23 @@
     async addToQueue(trackId) {
       try {
         const uri = `spotify:track:${trackId}`;
-        await Spicetify.Platform.PlayerAPI.addToQueue([{
-          uri: uri
-        }]);
+        
+        // Try Player API first
+        if (Spicetify.Player?.addToQueue) {
+          await Spicetify.Player.addToQueue(uri);
+        } 
+        // Fallback to Platform API
+        else if (Spicetify.Platform?.PlayerAPI?.addToQueue) {
+          await Spicetify.Platform.PlayerAPI.addToQueue([{ uri }]);
+        }
+        // Fallback to Queue API
+        else if (Spicetify.Queue?.add) {
+          await Spicetify.Queue.add({ uri });
+        }
+        
         console.log('[Jamify] Added to queue:', trackId);
       } catch (error) {
         console.error('[Jamify] Error adding to queue:', error);
-      }
-    }
-
-    // Manual queue management methods
-    async removeFromQueue(trackUri) {
-      try {
-        await Spicetify.Platform.PlayerAPI.removeFromQueue([{
-          uri: trackUri
-        }]);
-        
-        // Update Jamify web app
-        if (this.roomId) {
-          await this.notifyWebApp('remove', trackUri);
-        }
-        
-        return true;
-      } catch (error) {
-        console.error('[Jamify] Error removing from queue:', error);
-        return false;
-      }
-    }
-
-    async notifyWebApp(action, data) {
-      try {
-        await fetch(`${CONFIG.API_URL}/api/rooms/${this.roomId}/sync`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action, data })
-        });
-      } catch (error) {
-        console.error('[Jamify] Error notifying web app:', error);
       }
     }
   }
