@@ -103,6 +103,16 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 See [VERCEL_DEPLOYMENT.md](VERCEL_DEPLOYMENT.md) for production deployment instructions.
 
+## Full Queue Management with Spicetify
+
+The Spotify Web API doesn't allow removing songs from the queue. For **full queue control**, install our Spicetify extension:
+
+- ✅ Add, remove, and clear queue
+- ✅ Real-time sync with web app
+- ✅ Works with Spotify Desktop
+
+**See [SPICETIFY_SETUP.md](SPICETIFY_SETUP.md) for installation guide.**
+
 ## Project Structure
 
 ```
