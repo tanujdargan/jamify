@@ -28,7 +28,13 @@ export default function SongSearch({ roomId, onSongAdded }: SongSearchProps) {
   const [adding, setAdding] = useState<string | null>(null)
 
   const searchSongs = async (searchQuery: string) => {
-    if (!searchQuery.trim() || !session?.accessToken) return
+    if (!searchQuery.trim() || !session?.accessToken) {
+      console.log('Cannot search: missing query or access token', {
+        hasQuery: !!searchQuery.trim(),
+        hasToken: !!session?.accessToken
+      })
+      return
+    }
 
     setLoading(true)
     try {
@@ -36,9 +42,18 @@ export default function SongSearch({ roomId, onSongAdded }: SongSearchProps) {
         `/api/spotify/search?q=${encodeURIComponent(searchQuery)}&token=${session.accessToken}`
       )
       const data = await response.json()
+      
+      if (!response.ok) {
+        console.error('Search failed:', data)
+        alert(`Search failed: ${data.error || 'Unknown error'}`)
+        setResults([])
+        return
+      }
+      
       setResults(data.tracks?.items || [])
     } catch (error) {
       console.error('Search error:', error)
+      alert('Failed to search songs. Please try again.')
     } finally {
       setLoading(false)
     }
