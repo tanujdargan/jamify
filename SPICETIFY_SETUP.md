@@ -181,10 +181,7 @@ spicetify restore
 ### File Structure
 ```
 spicetify-extension/
-├── jamify-companion/
-│   ├── index.js          # Main extension code
-│   ├── manifest.json     # Extension metadata
-│   └── style.css         # Styling
+├── jamify-companion.js   # Main extension code
 ├── README.md             # Detailed documentation
 └── INSTALLATION.md       # Quick start guide
 ```
