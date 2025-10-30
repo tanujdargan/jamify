@@ -24,15 +24,22 @@ export async function POST(req: NextRequest) {
     }
 
     if (!response.ok) {
-      const error = await response.text()
-      console.error('Spotify play error:', error)
-      return NextResponse.json({ error: 'Failed to play track' }, { status: response.status })
+      const errorText = await response.text()
+      console.error('Spotify play error:', response.status, errorText)
+      return NextResponse.json({ 
+        error: 'Failed to play track',
+        status: response.status,
+        details: errorText 
+      }, { status: response.status })
     }
 
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Error playing track:', error)
-    return NextResponse.json({ error: 'Failed to play track' }, { status: 500 })
+    return NextResponse.json({ 
+      error: 'Failed to play track',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
   }
 }
 
