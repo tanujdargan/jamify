@@ -46,89 +46,63 @@
 
     async addUIButton() {
       try {
+        console.log('[Jamify] Attempting to add UI button...');
+        
         // Create button element
         const button = document.createElement('button');
-        button.classList.add('main-topBar-button');
-        button.setAttribute('data-tooltip', 'Jamify Companion');
-        button.setAttribute('aria-label', 'Jamify');
+        button.id = 'jamify-companion-button';
+        button.setAttribute('aria-label', 'Jamify Companion');
         button.style.cssText = `
-          position: relative;
+          position: fixed;
+          top: 16px;
+          right: 100px;
+          z-index: 99999;
           padding: 8px 12px;
-          background: transparent;
-          border: none;
-          color: ${this.roomId ? '#22c55e' : 'inherit'};
+          background: rgba(40, 40, 40, 0.9);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 8px;
+          color: ${this.roomId ? '#22c55e' : '#ffffff'};
           cursor: pointer;
           display: flex;
           align-items: center;
-          gap: 4px;
+          gap: 6px;
           font-size: 14px;
           font-weight: 600;
-          transition: opacity 0.2s;
+          transition: all 0.2s;
+          backdrop-filter: blur(10px);
         `;
         button.innerHTML = `
           <svg role="img" height="16" width="16" viewBox="0 0 16 16" fill="currentColor">
             <path d="M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13zM0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8z"/>
-            <path d="M8 3.5a.5.5 0 0 1 .5.5v4a.5.5 0 0 1-1 0V4a.5.5 0 0 1 .5-.5zM8 11a1 1 0 1 0 0-2 1 1 0 0 0 0 2z"/>
+            <path d="M11.5 6.5a.5.5 0 0 1 0 1h-7a.5.5 0 0 1 0-1h7zM11 8a.5.5 0 0 1-.5.5h-5a.5.5 0 0 1 0-1h5A.5.5 0 0 1 11 8zm-.5 2.5a.5.5 0 0 0 0-1h-3a.5.5 0 0 0 0 1h3z"/>
           </svg>
           <span>Jamify</span>
         `;
         
         // Add hover effect
-        button.onmouseenter = () => button.style.opacity = '0.7';
-        button.onmouseleave = () => button.style.opacity = '1';
+        button.onmouseenter = () => {
+          button.style.background = 'rgba(60, 60, 60, 0.95)';
+          button.style.transform = 'translateY(-1px)';
+        };
+        button.onmouseleave = () => {
+          button.style.background = 'rgba(40, 40, 40, 0.9)';
+          button.style.transform = 'translateY(0)';
+        };
         
         // Add click handler
         button.onclick = () => this.openSettings();
         
-        // Wait for DOM to be ready and find the topbar
-        let retries = 0;
-        const maxRetries = 10;
+        // Simply append to body - works everywhere
+        document.body.appendChild(button);
+        this.buttonElement = button;
         
-        const tryAddButton = () => {
-          // Try multiple possible locations for the topbar
-          const selectors = [
-            '.body-drag-top',
-            '.main-topBar-topbarContent',
-            '.main-topBar-topbarContentRight',
-            'header',
-            '[class*="topBar"]'
-          ];
-          
-          let topbar = null;
-          for (const selector of selectors) {
-            topbar = document.querySelector(selector);
-            if (topbar) {
-              console.log('[Jamify] Found topbar with selector:', selector);
-              break;
-            }
-          }
-          
-          if (topbar) {
-            // Create a container for our button
-            const container = document.createElement('div');
-            container.style.cssText = `
-              position: absolute;
-              top: 8px;
-              right: 80px;
-              z-index: 1000;
-            `;
-            container.appendChild(button);
-            topbar.appendChild(container);
-            
-            this.buttonElement = button;
-            console.log('[Jamify] Button added to topbar successfully');
-          } else {
-            retries++;
-            if (retries < maxRetries) {
-              console.log(`[Jamify] Topbar not found, retrying... (${retries}/${maxRetries})`);
-              setTimeout(tryAddButton, 1000);
-            } else {
-              console.error('[Jamify] Failed to find topbar after multiple retries');
-            }
-          }
-        };
+        console.log('[Jamify] Button added to page successfully (fixed position)');
         
-        tryAddButton();
+        // Show notification
+        if (this.roomId) {
+          Spicetify.showNotification('Jamify: Connected to room');
+        }
+        
       } catch (error) {
         console.error('[Jamify] Error adding button:', error);
       }
