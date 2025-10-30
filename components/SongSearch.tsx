@@ -36,6 +36,12 @@ export default function SongSearch({ roomId, onSongAdded }: SongSearchProps) {
       return
     }
 
+    // Check if session has a token refresh error
+    if (session.error === 'RefreshAccessTokenError') {
+      alert('Your session has expired. Please log out and log back in.')
+      return
+    }
+
     setLoading(true)
     try {
       const response = await fetch(
