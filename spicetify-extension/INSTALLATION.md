@@ -20,19 +20,19 @@ curl -fsSL https://raw.githubusercontent.com/spicetify/spicetify-cli/master/inst
 
 ### Option 1: Manual Installation
 
-1. **Find your Spicetify directory:**
+1. **Find your Spicetify Extensions directory:**
 
-**Windows:** `%APPDATA%\spicetify\CustomApps\`
+**Windows:** `%APPDATA%\spicetify\Extensions\`
 
-**macOS:** `~/spicetify_data/CustomApps/`
+**macOS:** `~/spicetify_data/Extensions/`
 
-**Linux:** `~/.config/spicetify/CustomApps/`
+**Linux:** `~/.config/spicetify/Extensions/`
 
-2. **Copy the `jamify-companion` folder** into the `CustomApps` directory
+2. **Copy the `jamify-companion.js` file** into the `Extensions` directory
 
 3. **Enable the extension:**
 ```bash
-spicetify config custom_apps jamify-companion
+spicetify config extensions jamify-companion.js
 spicetify backup apply
 ```
 
@@ -40,28 +40,28 @@ spicetify backup apply
 
 **Windows:**
 ```powershell
-# Navigate to the folder containing jamify-companion
+# Navigate to the folder containing jamify-companion.js
 cd path\to\jamify\spicetify-extension
 
 # Copy to Spicetify directory
-Copy-Item -Path "jamify-companion" -Destination "$env:APPDATA\spicetify\CustomApps\" -Recurse -Force
+Copy-Item -Path "jamify-companion.js" -Destination "$env:APPDATA\spicetify\Extensions\" -Force
 
 # Enable
-spicetify config custom_apps jamify-companion
+spicetify config extensions jamify-companion.js
 spicetify backup apply
 ```
 
 **macOS/Linux:**
 ```bash
-# Navigate to the folder containing jamify-companion
+# Navigate to the folder containing jamify-companion.js
 cd path/to/jamify/spicetify-extension
 
 # Copy to Spicetify directory
-cp -r jamify-companion ~/spicetify_data/CustomApps/
-# or for Linux: cp -r jamify-companion ~/.config/spicetify/CustomApps/
+cp jamify-companion.js ~/spicetify_data/Extensions/
+# or for Linux: cp jamify-companion.js ~/.config/spicetify/Extensions/
 
 # Enable
-spicetify config custom_apps jamify-companion
+spicetify config extensions jamify-companion.js
 spicetify backup apply
 ```
 
@@ -91,7 +91,7 @@ spicetify restore backup apply
 spicetify -v
 ```
 
-### Can't find CustomApps folder?
+### Can't find Extensions folder?
 ```bash
 spicetify path
 ```

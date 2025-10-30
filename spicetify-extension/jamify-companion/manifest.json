@@ -1,9 +1,0 @@
-{
-  "name": "Jamify Companion",
-  "description": "Sync your Jamify queue with Spotify and enable full queue management",
-  "version": "1.0.0",
-  "author": "Jamify",
-  "main": "index.js",
-  "icon": "icon.png"
-}
-

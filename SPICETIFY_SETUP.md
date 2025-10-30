@@ -32,19 +32,19 @@ cd path/to/jamify
 
 # Copy extension to Spicetify
 # Windows:
-Copy-Item -Path "spicetify-extension\jamify-companion" -Destination "$env:APPDATA\spicetify\CustomApps\" -Recurse -Force
+Copy-Item -Path "spicetify-extension\jamify-companion.js" -Destination "$env:APPDATA\spicetify\Extensions\" -Force
 
 # macOS:
-cp -r spicetify-extension/jamify-companion ~/spicetify_data/CustomApps/
+cp spicetify-extension/jamify-companion.js ~/spicetify_data/Extensions/
 
 # Linux:
-cp -r spicetify-extension/jamify-companion ~/.config/spicetify/CustomApps/
+cp spicetify-extension/jamify-companion.js ~/.config/spicetify/Extensions/
 ```
 
 ### 3. Enable Extension
 
 ```bash
-spicetify config custom_apps jamify-companion
+spicetify config extensions jamify-companion.js
 spicetify backup apply
 ```
 
@@ -161,7 +161,7 @@ Currently supports one room at a time. Disconnect from current room before conne
 ## Uninstalling
 
 ```bash
-spicetify config custom_apps jamify-companion-
+spicetify config extensions jamify-companion.js-
 spicetify backup apply
 ```
 
