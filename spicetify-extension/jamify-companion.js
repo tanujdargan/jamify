@@ -50,31 +50,72 @@
         const button = document.createElement('button');
         button.classList.add('main-topBar-button');
         button.setAttribute('data-tooltip', 'Jamify Companion');
-        button.style.position = 'relative';
+        button.setAttribute('aria-label', 'Jamify');
+        button.style.cssText = `
+          position: relative;
+          padding: 8px 12px;
+          background: transparent;
+          border: none;
+          color: ${this.roomId ? '#22c55e' : 'inherit'};
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          font-size: 14px;
+          font-weight: 600;
+          transition: opacity 0.2s;
+        `;
         button.innerHTML = `
           <svg role="img" height="16" width="16" viewBox="0 0 16 16" fill="currentColor">
             <path d="M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13zM0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8z"/>
             <path d="M8 3.5a.5.5 0 0 1 .5.5v4a.5.5 0 0 1-1 0V4a.5.5 0 0 1 .5-.5zM8 11a1 1 0 1 0 0-2 1 1 0 0 0 0 2z"/>
           </svg>
-          <span style="margin-left: 4px;">Jamify</span>
+          <span>Jamify</span>
         `;
+        
+        // Add hover effect
+        button.onmouseenter = () => button.style.opacity = '0.7';
+        button.onmouseleave = () => button.style.opacity = '1';
         
         // Add click handler
         button.onclick = () => this.openSettings();
         
-        // Update color if connected
-        if (this.roomId) {
-          button.style.color = '#22c55e';
+        // Try multiple possible locations for the topbar
+        const selectors = [
+          '.main-topBar-topbarContent',
+          '.main-topBar-topbarContentRight',
+          '[class*="topBar"]',
+          'header',
+          '.main-topBar-container'
+        ];
+        
+        let topbar = null;
+        for (const selector of selectors) {
+          topbar = document.querySelector(selector);
+          if (topbar) {
+            console.log('[Jamify] Found topbar with selector:', selector);
+            break;
+          }
         }
         
-        // Add to topbar
-        const topbar = document.querySelector('.main-topBar-topbarContent');
         if (topbar) {
-          topbar.appendChild(button);
+          // Try to insert before user menu if possible
+          const userMenu = topbar.querySelector('[data-testid="user-widget-link"]') || 
+                          topbar.querySelector('[aria-label*="Profile"]') ||
+                          topbar.querySelector('button:last-child');
+          
+          if (userMenu && userMenu.parentNode === topbar) {
+            topbar.insertBefore(button, userMenu);
+          } else {
+            topbar.appendChild(button);
+          }
+          
           this.buttonElement = button;
-          console.log('[Jamify] Button added to topbar');
+          console.log('[Jamify] Button added to topbar successfully');
         } else {
-          console.error('[Jamify] Topbar not found');
+          console.error('[Jamify] Topbar not found, retrying...');
+          // Retry after a delay
+          setTimeout(() => this.addUIButton(), 1000);
         }
       } catch (error) {
         console.error('[Jamify] Error adding button:', error);
