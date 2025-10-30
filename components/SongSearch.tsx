@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 
 interface Track {
@@ -27,12 +27,14 @@ export default function SongSearch({ roomId, onSongAdded }: SongSearchProps) {
   const [loading, setLoading] = useState(false)
   const [adding, setAdding] = useState<string | null>(null)
 
-  const searchSongs = async (searchQuery: string) => {
-    if (!searchQuery.trim() || !session?.accessToken) {
-      console.log('Cannot search: missing query or access token', {
-        hasQuery: !!searchQuery.trim(),
-        hasToken: !!session?.accessToken
-      })
+  const searchSongs = useCallback(async (searchQuery: string) => {
+    if (!searchQuery.trim()) {
+      setResults([])
+      return
+    }
+
+    if (!session?.accessToken) {
+      console.log('Cannot search: missing access token')
       return
     }
 
@@ -51,7 +53,6 @@ export default function SongSearch({ roomId, onSongAdded }: SongSearchProps) {
       
       if (!response.ok) {
         console.error('Search failed:', data)
-        alert(`Search failed: ${data.error || 'Unknown error'}`)
         setResults([])
         return
       }
@@ -59,11 +60,19 @@ export default function SongSearch({ roomId, onSongAdded }: SongSearchProps) {
       setResults(data.tracks?.items || [])
     } catch (error) {
       console.error('Search error:', error)
-      alert('Failed to search songs. Please try again.')
     } finally {
       setLoading(false)
     }
-  }
+  }, [session])
+
+  // Debounced search effect
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      searchSongs(query)
+    }, 500) // Wait 500ms after user stops typing
+
+    return () => clearTimeout(timer)
+  }, [query, searchSongs])
 
   const addToQueue = async (track: Track) => {
     setAdding(track.id)
@@ -91,31 +100,21 @@ export default function SongSearch({ roomId, onSongAdded }: SongSearchProps) {
     }
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    searchSongs(query)
-  }
-
   return (
     <div className="w-full max-w-2xl mx-auto">
-      <form onSubmit={handleSubmit} className="mb-6">
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search for songs..."
-            className="flex-1 px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500"
-          />
-          <button
-            type="submit"
-            disabled={loading}
-            className="px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
-          >
-            {loading ? 'Searching...' : 'Search'}
-          </button>
-        </div>
-      </form>
+      <div className="mb-6">
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Start typing to search for songs..."
+          className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500"
+          autoComplete="off"
+        />
+        {loading && (
+          <p className="text-sm text-gray-500 mt-2">Searching...</p>
+        )}
+      </div>
 
       <div className="space-y-3">
         {results.map((track) => (

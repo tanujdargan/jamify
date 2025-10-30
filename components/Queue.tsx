@@ -20,14 +20,25 @@ interface QueueProps {
   roomId: string
   isHost?: boolean
   refreshTrigger?: number
+  hostId?: string
+  allowedUsers?: string
+  currentUserName?: string
 }
 
-export default function Queue({ roomId, isHost = false, refreshTrigger }: QueueProps) {
+export default function Queue({ roomId, isHost = false, refreshTrigger, hostId, allowedUsers, currentUserName }: QueueProps) {
   const { data: session } = useSession()
   const [queue, setQueue] = useState<QueueItemType[]>([])
   const [loading, setLoading] = useState(true)
   const [processing, setProcessing] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<string | null>(null)
+
+  // Check if current user can delete songs
+  const canDelete = () => {
+    if (isHost) return true
+    if (!currentUserName || !allowedUsers) return false
+    const allowed = allowedUsers.split(',').map(u => u.trim().toLowerCase())
+    return allowed.includes(currentUserName.toLowerCase())
+  }
 
   const fetchQueue = async () => {
     try {
@@ -215,13 +226,15 @@ export default function Queue({ roomId, isHost = false, refreshTrigger }: QueueP
                 {item.addedToSpotify ? 'Added ✓' : processing === item.spotifyTrackId ? 'Adding...' : 'Add to Spotify'}
               </button>
             )}
-            <button
-              onClick={() => deleteItem(item.id, item.addedToSpotify)}
-              disabled={deleting === item.id}
-              className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
-            >
-              {deleting === item.id ? 'Removing...' : 'Remove'}
-            </button>
+            {canDelete() && (
+              <button
+                onClick={() => deleteItem(item.id, item.addedToSpotify)}
+                disabled={deleting === item.id}
+                className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+              >
+                {deleting === item.id ? 'Removing...' : 'Remove'}
+              </button>
+            )}
           </div>
         </div>
       ))}

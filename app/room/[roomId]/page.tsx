@@ -11,6 +11,7 @@ interface Room {
   id: string
   name: string
   hostId: string
+  allowedUsers?: string
   createdAt: string
 }
 
@@ -22,6 +23,8 @@ export default function RoomPage() {
   const [loading, setLoading] = useState(true)
   const [queueRefresh, setQueueRefresh] = useState(0)
   const [showQR, setShowQR] = useState(true)
+  const [showPermissions, setShowPermissions] = useState(false)
+  const [allowedUsers, setAllowedUsers] = useState('')
 
   useEffect(() => {
     const fetchRoom = async () => {
@@ -29,6 +32,7 @@ export default function RoomPage() {
         const response = await fetch(`/api/rooms/${roomId}`)
         const data = await response.json()
         setRoom(data)
+        setAllowedUsers(data.allowedUsers || '')
       } catch (error) {
         console.error('Error fetching room:', error)
       } finally {
@@ -40,6 +44,26 @@ export default function RoomPage() {
       fetchRoom()
     }
   }, [roomId])
+
+  const saveAllowedUsers = async () => {
+    try {
+      const response = await fetch(`/api/rooms/${roomId}/permissions`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ allowedUsers }),
+      })
+      
+      if (response.ok) {
+        alert('Permissions updated!')
+        setShowPermissions(false)
+        const data = await response.json()
+        setRoom(prev => prev ? { ...prev, allowedUsers: data.allowedUsers } : null)
+      }
+    } catch (error) {
+      console.error('Error updating permissions:', error)
+      alert('Failed to update permissions')
+    }
+  }
 
   const isHost = session?.user?.email === room?.hostId
 
@@ -86,13 +110,53 @@ export default function RoomPage() {
                 <p className="text-green-600 font-semibold mt-1">You are the host</p>
               )}
             </div>
-            <button
-              onClick={() => setShowQR(!showQR)}
-              className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 font-semibold"
-            >
-              {showQR ? 'Hide QR Code' : 'Show QR Code'}
-            </button>
+            <div className="flex gap-2">
+              {isHost && (
+                <button
+                  onClick={() => setShowPermissions(!showPermissions)}
+                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 font-semibold"
+                >
+                  Manage Permissions
+                </button>
+              )}
+              <button
+                onClick={() => setShowQR(!showQR)}
+                className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 font-semibold"
+              >
+                {showQR ? 'Hide QR Code' : 'Show QR Code'}
+              </button>
+            </div>
           </div>
+
+          {showPermissions && isHost && (
+            <div className="bg-blue-50 rounded-lg p-6 mb-6">
+              <h3 className="text-lg font-bold text-gray-900 mb-3">Allow Users to Manage Queue</h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Enter names (separated by commas) of people who can remove songs from the queue. Anyone can add songs.
+              </p>
+              <input
+                type="text"
+                value={allowedUsers}
+                onChange={(e) => setAllowedUsers(e.target.value)}
+                placeholder="e.g., Alice, Bob, Charlie"
+                className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 mb-3"
+              />
+              <div className="flex gap-2">
+                <button
+                  onClick={saveAllowedUsers}
+                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 font-semibold"
+                >
+                  Save
+                </button>
+                <button
+                  onClick={() => setShowPermissions(false)}
+                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 font-semibold"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
 
           {showQR && (
             <div className="bg-gray-50 rounded-lg p-6 mb-6">
@@ -123,7 +187,14 @@ export default function RoomPage() {
           </div>
 
           <div className="bg-white rounded-2xl shadow-lg p-8">
-            <Queue roomId={roomId} isHost={isHost} refreshTrigger={queueRefresh} />
+            <Queue 
+              roomId={roomId} 
+              isHost={isHost} 
+              refreshTrigger={queueRefresh}
+              hostId={room.hostId}
+              allowedUsers={room.allowedUsers}
+              currentUserName={session?.user?.name || ''}
+            />
           </div>
         </div>
       </div>
