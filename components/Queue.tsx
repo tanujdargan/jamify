@@ -25,7 +25,8 @@ export default function Queue({ roomId, isHost = false, refreshTrigger }: QueueP
   const { data: session } = useSession()
   const [queue, setQueue] = useState<QueueItemType[]>([])
   const [loading, setLoading] = useState(true)
-  const [playing, setPlaying] = useState<string | null>(null)
+  const [processing, setProcessing] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState<string | null>(null)
 
   const fetchQueue = async () => {
     try {
@@ -45,12 +46,12 @@ export default function Queue({ roomId, isHost = false, refreshTrigger }: QueueP
     return () => clearInterval(interval)
   }, [roomId, refreshTrigger])
 
-  const playTrack = async (trackId: string) => {
+  const addToSpotifyQueue = async (trackId: string) => {
     if (!session?.accessToken) return
     
-    setPlaying(trackId)
+    setProcessing(trackId)
     try {
-      await fetch('/api/spotify/play', {
+      const response = await fetch('/api/spotify/queue', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -58,10 +59,40 @@ export default function Queue({ roomId, isHost = false, refreshTrigger }: QueueP
           accessToken: session.accessToken,
         }),
       })
+      
+      if (response.ok) {
+        alert('Song added to your Spotify queue!')
+      } else {
+        const data = await response.json()
+        alert(`Failed to add to Spotify queue: ${data.error}`)
+      }
     } catch (error) {
-      console.error('Error playing track:', error)
+      console.error('Error adding to Spotify queue:', error)
+      alert('Failed to add to queue. Make sure Spotify is open and playing.')
     } finally {
-      setPlaying(null)
+      setProcessing(null)
+    }
+  }
+
+  const deleteItem = async (itemId: string) => {
+    if (!confirm('Remove this song from the queue?')) return
+    
+    setDeleting(itemId)
+    try {
+      const response = await fetch(`/api/rooms/${roomId}/queue/${itemId}`, {
+        method: 'DELETE',
+      })
+      
+      if (response.ok) {
+        fetchQueue() // Refresh the queue
+      } else {
+        alert('Failed to remove song')
+      }
+    } catch (error) {
+      console.error('Error deleting item:', error)
+      alert('Failed to remove song')
+    } finally {
+      setDeleting(null)
     }
   }
 
@@ -84,9 +115,46 @@ export default function Queue({ roomId, isHost = false, refreshTrigger }: QueueP
     )
   }
 
+  const addAllToSpotify = async () => {
+    if (!session?.accessToken || queue.length === 0) return
+    
+    if (!confirm(`Add all ${queue.length} songs to your Spotify queue?`)) return
+    
+    let successCount = 0
+    for (const item of queue) {
+      try {
+        const response = await fetch('/api/spotify/queue', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            trackUri: `spotify:track:${item.spotifyTrackId}`,
+            accessToken: session.accessToken,
+          }),
+        })
+        if (response.ok) successCount++
+        // Small delay between requests to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 200))
+      } catch (error) {
+        console.error('Error adding track:', error)
+      }
+    }
+    
+    alert(`Added ${successCount} of ${queue.length} songs to Spotify!`)
+  }
+
   return (
     <div className="space-y-3">
-      <h2 className="text-2xl font-bold text-gray-900 mb-4">Queue ({queue.length})</h2>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-2xl font-bold text-gray-900">Queue ({queue.length})</h2>
+        {isHost && queue.length > 0 && (
+          <button
+            onClick={addAllToSpotify}
+            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium"
+          >
+            Add All to Spotify
+          </button>
+        )}
+      </div>
       {queue.map((item, index) => (
         <div
           key={item.id}
@@ -107,15 +175,24 @@ export default function Queue({ roomId, isHost = false, refreshTrigger }: QueueP
               Added by {item.addedBy || 'Guest'} • {formatDuration(item.duration)}
             </p>
           </div>
-          {isHost && (
+          <div className="flex gap-2">
+            {isHost && (
+              <button
+                onClick={() => addToSpotifyQueue(item.spotifyTrackId)}
+                disabled={processing === item.spotifyTrackId}
+                className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed font-medium whitespace-nowrap"
+              >
+                {processing === item.spotifyTrackId ? 'Adding...' : 'Add to Spotify'}
+              </button>
+            )}
             <button
-              onClick={() => playTrack(item.spotifyTrackId)}
-              disabled={playing === item.spotifyTrackId}
-              className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+              onClick={() => deleteItem(item.id)}
+              disabled={deleting === item.id}
+              className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
             >
-              {playing === item.spotifyTrackId ? 'Playing...' : 'Play'}
+              {deleting === item.id ? 'Removing...' : 'Remove'}
             </button>
-          )}
+          </div>
         </div>
       ))}
     </div>
