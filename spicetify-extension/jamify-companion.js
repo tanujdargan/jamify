@@ -80,43 +80,55 @@
         // Add click handler
         button.onclick = () => this.openSettings();
         
-        // Try multiple possible locations for the topbar
-        const selectors = [
-          '.main-topBar-topbarContent',
-          '.main-topBar-topbarContentRight',
-          '[class*="topBar"]',
-          'header',
-          '.main-topBar-container'
-        ];
+        // Wait for DOM to be ready and find the topbar
+        let retries = 0;
+        const maxRetries = 10;
         
-        let topbar = null;
-        for (const selector of selectors) {
-          topbar = document.querySelector(selector);
+        const tryAddButton = () => {
+          // Try multiple possible locations for the topbar
+          const selectors = [
+            '.body-drag-top',
+            '.main-topBar-topbarContent',
+            '.main-topBar-topbarContentRight',
+            'header',
+            '[class*="topBar"]'
+          ];
+          
+          let topbar = null;
+          for (const selector of selectors) {
+            topbar = document.querySelector(selector);
+            if (topbar) {
+              console.log('[Jamify] Found topbar with selector:', selector);
+              break;
+            }
+          }
+          
           if (topbar) {
-            console.log('[Jamify] Found topbar with selector:', selector);
-            break;
-          }
-        }
-        
-        if (topbar) {
-          // Try to insert before user menu if possible
-          const userMenu = topbar.querySelector('[data-testid="user-widget-link"]') || 
-                          topbar.querySelector('[aria-label*="Profile"]') ||
-                          topbar.querySelector('button:last-child');
-          
-          if (userMenu && userMenu.parentNode === topbar) {
-            topbar.insertBefore(button, userMenu);
+            // Create a container for our button
+            const container = document.createElement('div');
+            container.style.cssText = `
+              position: absolute;
+              top: 8px;
+              right: 80px;
+              z-index: 1000;
+            `;
+            container.appendChild(button);
+            topbar.appendChild(container);
+            
+            this.buttonElement = button;
+            console.log('[Jamify] Button added to topbar successfully');
           } else {
-            topbar.appendChild(button);
+            retries++;
+            if (retries < maxRetries) {
+              console.log(`[Jamify] Topbar not found, retrying... (${retries}/${maxRetries})`);
+              setTimeout(tryAddButton, 1000);
+            } else {
+              console.error('[Jamify] Failed to find topbar after multiple retries');
+            }
           }
-          
-          this.buttonElement = button;
-          console.log('[Jamify] Button added to topbar successfully');
-        } else {
-          console.error('[Jamify] Topbar not found, retrying...');
-          // Retry after a delay
-          setTimeout(() => this.addUIButton(), 1000);
-        }
+        };
+        
+        tryAddButton();
       } catch (error) {
         console.error('[Jamify] Error adding button:', error);
       }
