@@ -74,9 +74,14 @@ export default function Home() {
                   </li>
                   <li className="flex items-start">
                     <span className="mr-2">4.</span>
-                    <span>Songs play on your Spotify account</span>
+                    <span>Install Spicetify Companion for auto-sync to Spotify</span>
                   </li>
                 </ul>
+                <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-xs text-blue-800">
+                    <strong>Tip:</strong> Install the Spicetify extension for automatic queue sync with Spotify Desktop
+                  </p>
+                </div>
               </div>
             </div>
           ) : (

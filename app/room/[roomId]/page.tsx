@@ -171,9 +171,19 @@ export default function RoomPage() {
                   <p className="text-gray-600 mb-4">
                     Share this QR code with friends to let them add songs to the queue
                   </p>
-                  <div className="bg-white p-3 rounded border border-gray-200 break-all text-sm">
+                  <div className="bg-white p-3 rounded border border-gray-200 break-all text-sm mb-4">
                     {joinUrl}
                   </div>
+                  {isHost && (
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm">
+                      <p className="text-green-800 mb-2">
+                        <strong>Room ID:</strong> <code className="bg-green-100 px-2 py-1 rounded">{roomId}</code>
+                      </p>
+                      <p className="text-green-700 text-xs">
+                        Use this ID in the Spicetify Companion extension to sync your Spotify queue
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
