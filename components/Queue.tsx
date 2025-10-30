@@ -13,7 +13,6 @@ interface QueueItemType {
   addedBy?: string
   addedAt: string
   isPlayed: boolean
-  addedToSpotify: boolean
 }
 
 interface QueueProps {
@@ -58,7 +57,7 @@ export default function Queue({ roomId, isHost = false, refreshTrigger, hostId, 
   }, [roomId, refreshTrigger])
 
 
-  const deleteItem = async (itemId: string, addedToSpotify: boolean) => {
+  const deleteItem = async (itemId: string) => {
     if (!confirm('Remove this song from the queue?')) return
     
     setDeleting(itemId)
@@ -145,7 +144,7 @@ export default function Queue({ roomId, isHost = false, refreshTrigger, hostId, 
           <div className="flex gap-2">
             {canDelete() && (
               <button
-                onClick={() => deleteItem(item.id, item.addedToSpotify)}
+                onClick={() => deleteItem(item.id)}
                 disabled={deleting === item.id}
                 className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
               >

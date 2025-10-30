@@ -36,7 +36,6 @@ model QueueItem {
   addedAt     DateTime @default(now())
   playedAt    DateTime?
   isPlayed    Boolean  @default(false)
-  addedToSpotify Boolean @default(false)
   room        Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
 
   @@index([roomId])
