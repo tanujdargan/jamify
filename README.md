@@ -91,10 +91,17 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 - **Framework**: Next.js 15 with App Router
 - **Authentication**: NextAuth.js with Spotify OAuth
-- **Database**: SQLite with Prisma ORM
+- **Database**: PostgreSQL with Prisma ORM (Vercel Postgres for production)
 - **Styling**: Tailwind CSS
 - **QR Codes**: qrcode library
 - **Real-time**: Polling-based updates (every 5 seconds)
+
+## Important: Database Setup
+
+- **Production (Vercel)**: Requires PostgreSQL (Vercel Postgres)
+- **Local Development**: Currently configured for PostgreSQL
+
+See [VERCEL_DEPLOYMENT.md](VERCEL_DEPLOYMENT.md) for production deployment instructions.
 
 ## Project Structure
 
