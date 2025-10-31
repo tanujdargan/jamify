@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
+import { toast } from 'sonner'
 
 interface QueueItemType {
   id: string
@@ -29,6 +30,7 @@ export default function Queue({ roomId, isHost = false, refreshTrigger, hostId, 
   const [queue, setQueue] = useState<QueueItemType[]>([])
   const [loading, setLoading] = useState(true)
   const [deleting, setDeleting] = useState<string | null>(null)
+  const [clearing, setClearing] = useState(false)
 
   // Check if current user can delete songs
   const canDelete = () => {
@@ -57,26 +59,77 @@ export default function Queue({ roomId, isHost = false, refreshTrigger, hostId, 
   }, [roomId, refreshTrigger])
 
 
-  const deleteItem = async (itemId: string) => {
-    if (!confirm('Remove this song from the queue?')) return
-    
+  const deleteItem = async (itemId: string, trackName?: string) => {
+    const item = queue.find(q => q.id === itemId)
+
+    toast.error(`Removed "${item?.trackName || 'Song'}" from queue`, {
+      description: 'Undo functionality coming soon',
+      action: {
+        label: 'Undo',
+        onClick: async () => {
+          console.log('Undo not yet implemented')
+        }
+      }
+    })
+
     setDeleting(itemId)
     try {
       const response = await fetch(`/api/rooms/${roomId}/queue/${itemId}`, {
         method: 'DELETE',
       })
-      
+
       if (response.ok) {
         fetchQueue() // Refresh the queue
       } else {
-        alert('Failed to remove song')
+        toast.error('Failed to remove song', {
+          description: 'Please try again'
+        })
       }
     } catch (error) {
       console.error('Error deleting item:', error)
-      alert('Failed to remove song')
+      toast.error('Failed to remove song', {
+        description: 'Network error occurred'
+      })
     } finally {
       setDeleting(null)
     }
+  }
+
+  const clearQueue = async () => {
+    const confirmToast = toast.error('Clear entire queue?', {
+      description: 'This will remove all songs from the queue',
+      closeButton: true,
+      duration: 5000,
+      action: {
+        label: 'Confirm',
+        onClick: async () => {
+          setClearing(true)
+          try {
+            const response = await fetch(`/api/rooms/${roomId}/queue/clear`, {
+              method: 'DELETE',
+            })
+
+            if (response.ok) {
+              toast.success('Queue cleared', {
+                description: 'All songs have been removed'
+              })
+              fetchQueue()
+            } else {
+              toast.error('Failed to clear queue', {
+                description: 'Please try again'
+              })
+            }
+          } catch (error) {
+            console.error('Error clearing queue:', error)
+            toast.error('Failed to clear queue', {
+              description: 'Network error occurred'
+            })
+          } finally {
+            setClearing(false)
+          }
+        }
+      }
+    })
   }
 
   const formatDuration = (ms: number) => {
@@ -104,6 +157,15 @@ export default function Queue({ roomId, isHost = false, refreshTrigger, hostId, 
       <div className="mb-4">
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-2xl font-bold text-gray-900">Queue ({queue.length})</h2>
+          {isHost && queue.length > 0 && (
+            <button
+              onClick={clearQueue}
+              disabled={clearing}
+              className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors text-sm"
+            >
+              {clearing ? 'Clearing...' : 'Clear Queue'}
+            </button>
+          )}
         </div>
         {isHost && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm">
