@@ -34,22 +34,6 @@ export default function SongSearch({ roomId, onSongAdded }: SongSearchProps) {
       return
     }
 
-    if (!session?.accessToken) {
-      console.warn('Cannot search: missing access token')
-      toast.error('Not authenticated', {
-        description: 'Please log in with Spotify to search for songs'
-      })
-      return
-    }
-
-    // Check if session has a token refresh error
-    if (session.error === 'RefreshAccessTokenError') {
-      toast.error('Session expired', {
-        description: 'Please log out and log back in to continue'
-      })
-      return
-    }
-
     setLoading(true)
     try {
       const response = await fetch('/api/spotify/search', {
@@ -57,7 +41,6 @@ export default function SongSearch({ roomId, onSongAdded }: SongSearchProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           query: searchQuery,
-          accessToken: session.accessToken
         })
       })
 
@@ -88,7 +71,7 @@ export default function SongSearch({ roomId, onSongAdded }: SongSearchProps) {
     } finally {
       setLoading(false)
     }
-  }, [session])
+  }, [])
 
   // Debounced search effect
   useEffect(() => {
@@ -111,7 +94,7 @@ export default function SongSearch({ roomId, onSongAdded }: SongSearchProps) {
           artistName: track.artists.map((a) => a.name).join(', '),
           albumArt: track.album.images[0]?.url,
           duration: track.duration_ms,
-          addedBy: session?.user?.name || 'Guest',
+          addedBy: session?.user?.name,
         }),
       })
 
