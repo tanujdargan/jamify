@@ -297,24 +297,65 @@
 
     async syncQueue(queueItems) {
       try {
+        console.log('[Jamify] Starting queue sync...');
+        
         // Get current Spotify queue
         const currentQueue = await this.getCurrentQueue();
+        const currentTrackIds = currentQueue.map(track => {
+          const match = track.uri?.match(/spotify:track:(.+)/);
+          return match ? match[1] : null;
+        }).filter(Boolean);
         
-        // Clear current queue (except currently playing)
-        await this.clearQueue(currentQueue);
+        // Get desired track IDs from Jamify (in order)
+        const desiredTrackIds = queueItems
+          .filter(item => !item.isPlayed)
+          .map(item => item.spotifyTrackId);
         
-        // Add Jamify queue items
-        for (const item of queueItems) {
-          if (!item.isPlayed) {
-            await this.addToQueue(item.spotifyTrackId);
+        console.log('[Jamify] Current Spotify queue:', currentTrackIds);
+        console.log('[Jamify] Desired Jamify queue:', desiredTrackIds);
+        
+        // If queues match exactly (same tracks in same order), skip sync
+        if (JSON.stringify(currentTrackIds) === JSON.stringify(desiredTrackIds)) {
+          console.log('[Jamify] Queues match exactly, no sync needed');
+          this.lastQueueState = queueItems;
+          return;
+        }
+        
+        // Strategy: Complete rebuild for accuracy
+        // 1. Clear all tracks from Spotify queue
+        console.log('[Jamify] Clearing Spotify queue...');
+        for (const track of currentQueue) {
+          try {
+            await this.removeFromQueue(track.uri);
+            await new Promise(resolve => setTimeout(resolve, 50));
+          } catch (error) {
+            console.error('[Jamify] Failed to remove track:', error);
           }
         }
-
+        
+        // Small delay to let Spotify update
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
+        // 2. Add all Jamify tracks in order
+        console.log('[Jamify] Adding tracks to Spotify queue in order...');
+        for (const item of queueItems.filter(item => !item.isPlayed)) {
+          try {
+            await this.addToQueue(item.spotifyTrackId);
+            await new Promise(resolve => setTimeout(resolve, 100));
+          } catch (error) {
+            console.error('[Jamify] Failed to add track:', error);
+          }
+        }
+        
         this.lastQueueState = queueItems;
-        console.log('[Jamify] Queue synced successfully');
+        console.log('[Jamify] Queue synced successfully -', desiredTrackIds.length, 'tracks');
+        
+        // Show notification
+        Spicetify.showNotification(`Jamify: Synced ${desiredTrackIds.length} songs`);
         
       } catch (error) {
         console.error('[Jamify] Error syncing queue:', error);
+        Spicetify.showNotification('Jamify: Sync failed', true);
       }
     }
 
@@ -336,44 +377,55 @@
       }
     }
 
-    async clearQueue(currentQueue) {
+    async removeFromQueue(trackUri) {
       try {
-        // Use Player API to clear queue
+        console.log('[Jamify] Removing from queue:', trackUri);
+        
+        // Try Player API first
         if (Spicetify.Player?.removeFromQueue) {
-          for (const track of currentQueue) {
-            try {
-              await Spicetify.Player.removeFromQueue(track.uri);
-              await new Promise(resolve => setTimeout(resolve, 50)); // Small delay
-            } catch (error) {
-              console.error('[Jamify] Error removing track:', error);
-            }
-          }
-        } else {
-          console.warn('[Jamify] Queue removal not supported');
+          await Spicetify.Player.removeFromQueue(trackUri);
+          console.log('[Jamify] Removed via Player API');
+          return true;
+        } 
+        // Fallback to Platform API
+        else if (Spicetify.Platform?.PlayerAPI?.removeFromQueue) {
+          await Spicetify.Platform.PlayerAPI.removeFromQueue([{ uri: trackUri }]);
+          console.log('[Jamify] Removed via Platform API');
+          return true;
+        }
+        else {
+          console.warn('[Jamify] No remove method available');
+          return false;
         }
       } catch (error) {
-        console.error('[Jamify] Error clearing queue:', error);
+        console.error('[Jamify] Error removing from queue:', error);
+        return false;
       }
     }
 
     async addToQueue(trackId) {
       try {
         const uri = `spotify:track:${trackId}`;
+        console.log('[Jamify] Adding to queue:', uri);
         
         // Try Player API first
         if (Spicetify.Player?.addToQueue) {
           await Spicetify.Player.addToQueue(uri);
+          console.log('[Jamify] Added via Player API');
         } 
         // Fallback to Platform API
         else if (Spicetify.Platform?.PlayerAPI?.addToQueue) {
           await Spicetify.Platform.PlayerAPI.addToQueue([{ uri }]);
+          console.log('[Jamify] Added via Platform API');
         }
         // Fallback to Queue API
         else if (Spicetify.Queue?.add) {
           await Spicetify.Queue.add({ uri });
+          console.log('[Jamify] Added via Queue API');
         }
-        
-        console.log('[Jamify] Added to queue:', trackId);
+        else {
+          console.warn('[Jamify] No add method available');
+        }
       } catch (error) {
         console.error('[Jamify] Error adding to queue:', error);
       }
