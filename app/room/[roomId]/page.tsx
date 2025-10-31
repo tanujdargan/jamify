@@ -6,6 +6,7 @@ import { useParams } from 'next/navigation'
 import QRCode from '@/components/QRCode'
 import Queue from '@/components/Queue'
 import SongSearch from '@/components/SongSearch'
+import SpicetifyStatus from '@/components/SpicetifyStatus'
 
 interface Room {
   id: string
@@ -103,29 +104,32 @@ export default function RoomPage() {
     <div className="min-h-screen bg-gray-50 py-8 px-4">
       <div className="max-w-6xl mx-auto">
         <div className="bg-white rounded-2xl shadow-lg p-8 mb-8">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">{room.name}</h1>
-              {isHost && (
-                <p className="text-green-600 font-semibold mt-1">You are the host</p>
-              )}
-            </div>
-            <div className="flex gap-2">
-              {isHost && (
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900">{room.name}</h1>
+                {isHost && (
+                  <p className="text-green-600 font-semibold mt-1">You are the host</p>
+                )}
+              </div>
+              <div className="flex gap-2">
+                {isHost && (
+                  <button
+                    onClick={() => setShowPermissions(!showPermissions)}
+                    className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 font-semibold"
+                  >
+                    Manage Permissions
+                  </button>
+                )}
                 <button
-                  onClick={() => setShowPermissions(!showPermissions)}
-                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 font-semibold"
+                  onClick={() => setShowQR(!showQR)}
+                  className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 font-semibold"
                 >
-                  Manage Permissions
+                  {showQR ? 'Hide QR Code' : 'Show QR Code'}
                 </button>
-              )}
-              <button
-                onClick={() => setShowQR(!showQR)}
-                className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 font-semibold"
-              >
-                {showQR ? 'Hide QR Code' : 'Show QR Code'}
-              </button>
+              </div>
             </div>
+            {isHost && <SpicetifyStatus roomId={roomId} />}
           </div>
 
           {showPermissions && isHost && (

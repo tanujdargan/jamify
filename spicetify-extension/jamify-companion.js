@@ -253,6 +253,12 @@
       if (!this.isPolling || !this.roomId) return;
 
       try {
+        // Ping status endpoint to show we're connected
+        await fetch(`${CONFIG.API_URL}/api/rooms/${this.roomId}/status`, {
+          method: 'POST',
+        }).catch(err => console.warn('[Jamify] Status ping failed:', err));
+
+        // Fetch queue
         const response = await fetch(`${CONFIG.API_URL}/api/rooms/${this.roomId}/queue`);
         
         if (!response.ok) {
@@ -265,8 +271,10 @@
         
         // Check if queue has changed
         if (this.hasQueueChanged(queueItems)) {
-          console.log('[Jamify] Queue changed, syncing...', queueItems);
+          console.log('[Jamify] Queue changed, syncing...', queueItems.length, 'tracks');
           await this.syncQueue(queueItems);
+        } else {
+          console.log('[Jamify] Queue unchanged, skipping sync');
         }
 
       } catch (error) {
