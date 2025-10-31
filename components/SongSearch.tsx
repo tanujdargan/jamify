@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
+import { toast } from 'sonner'
 
 interface Track {
   id: string
@@ -34,32 +35,56 @@ export default function SongSearch({ roomId, onSongAdded }: SongSearchProps) {
     }
 
     if (!session?.accessToken) {
-      console.log('Cannot search: missing access token')
+      console.warn('Cannot search: missing access token')
+      toast.error('Not authenticated', {
+        description: 'Please log in with Spotify to search for songs'
+      })
       return
     }
 
     // Check if session has a token refresh error
     if (session.error === 'RefreshAccessTokenError') {
-      alert('Your session has expired. Please log out and log back in.')
+      toast.error('Session expired', {
+        description: 'Please log out and log back in to continue'
+      })
       return
     }
 
     setLoading(true)
     try {
-      const response = await fetch(
-        `/api/spotify/search?q=${encodeURIComponent(searchQuery)}&token=${session.accessToken}`
-      )
+      const response = await fetch('/api/spotify/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query: searchQuery,
+          accessToken: session.accessToken
+        })
+      })
+
       const data = await response.json()
-      
+
       if (!response.ok) {
         console.error('Search failed:', data)
+        toast.error('Search failed', {
+          description: data.error || 'Unable to search for songs'
+        })
         setResults([])
         return
       }
-      
-      setResults(data.tracks?.items || [])
+
+      const tracks = data.tracks?.items || []
+      setResults(tracks)
+
+      if (tracks.length === 0) {
+        toast.info('No results found', {
+          description: `No songs matching "${searchQuery}"`
+        })
+      }
     } catch (error) {
       console.error('Search error:', error)
+      toast.error('Search error', {
+        description: 'Network error occurred while searching'
+      })
     } finally {
       setLoading(false)
     }
@@ -91,10 +116,20 @@ export default function SongSearch({ roomId, onSongAdded }: SongSearchProps) {
       })
 
       if (response.ok) {
+        toast.success('Added to queue', {
+          description: `"${track.name}" by ${track.artists.map((a) => a.name).join(', ')}`
+        })
         onSongAdded?.()
+      } else {
+        toast.error('Failed to add song', {
+          description: 'Please try again'
+        })
       }
     } catch (error) {
       console.error('Add to queue error:', error)
+      toast.error('Failed to add song', {
+        description: 'Network error occurred'
+      })
     } finally {
       setAdding(null)
     }
@@ -108,8 +143,11 @@ export default function SongSearch({ roomId, onSongAdded }: SongSearchProps) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Start typing to search for songs..."
-          className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500"
+          className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 text-base"
           autoComplete="off"
+          spellCheck="false"
+          autoCapitalize="off"
+          autoCorrect="off"
         />
         {loading && (
           <p className="text-sm text-gray-500 mt-2">Searching...</p>
